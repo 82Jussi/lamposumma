@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lämpösummalaskuri</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+body{font-family:Arial,sans-serif;margin:0;padding:0}
+.container{padding:12px}
+.header{display:flex;justify-content:space-between;align-items:center}
+#map{width:100%;height:400px;min-height:400px;border-radius:8px;margin-top:10px;background:#eee}
+button{padding:12px;font-size:16px;cursor:pointer}
+.help-btn{width:42px;height:42px;border-radius:50%}
+input[type=date]{width:100%;padding:10px;box-sizing:border-box}
+#result{margin-top:10px;padding:12px;background:#eef6ff;border-radius:8px}
+.modal{display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5)}
+.modal-content{background:#fff;margin:3vh auto;width:95%;max-height:94vh;overflow-y:auto;padding:20px;border-radius:12px;box-sizing:border-box;-webkit-overflow-scrolling:touch}
+.close{float:right;font-size:28px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h2>Lämpösummalaskuri</h2><button class="help-btn" onclick="openHelp()">?</button></div>
+<label>Aloituspäivä</label>
+<input type="date" id="startDate">
+<br><br>
+<button onclick="useCurrentLocation()">Käytä nykyistä sijaintia</button>
+<div id="map"></div>
+<br>
+<button onclick="calculateHeatSum()">Laske lämpösumma</button>
+<div id="status"></div>
+<div id="result"></div>
+</div>
+<div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="closeHelp()">&times;</span><h3>Käyttöohje</h3><ol><li>Valitse aloituspäivä.</li><li>Valitse paikka kartalta tai GPS:llä.</li><li>Paina Laske lämpösumma.</li></ol><p>Lämpösumma = Σ max(keskilämpötila − 5°C, 0)</p></div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let selectedLat=60.1699, selectedLon=24.9384;
+const map=L.map('map').setView([selectedLat,selectedLon],7);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OpenStreetMap'}).addTo(map);
+let marker=L.marker([selectedLat,selectedLon]).addTo(map);
+setTimeout(()=>map.invalidateSize(),300);
+map.on('click',e=>{selectedLat=e.latlng.lat;selectedLon=e.latlng.lng;marker.setLatLng(e.latlng);});
+function useCurrentLocation(){navigator.geolocation.getCurrentPosition(p=>{selectedLat=p.coords.latitude;selectedLon=p.coords.longitude;marker.setLatLng([selectedLat,selectedLon]);map.setView([selectedLat,selectedLon],11);},e=>alert('Paikannus epäonnistui'));}
+function setDefaultDate(){const d=new Date();d.setMonth(0);d.setDate(1);document.getElementById('startDate').value=d.toISOString().split('T')[0];}
+function todayString(){return new Date().toISOString().split('T')[0];}
+async function calculateHeatSum(){const sd=document.getElementById('startDate').value;if(!sd)return alert('Valitse aloituspäivä');document.getElementById('status').innerText='Haetaan säätietoja...';try{const url=`https://archive-api.open-meteo.com/v1/archive?latitude=${selectedLat}&longitude=${selectedLon}&start_date=${sd}&end_date=${todayString()}&daily=temperature_2m_mean&timezone=auto`;const r=await fetch(url);const data=await r.json();let sum=0;(data.daily.temperature_2m_mean||[]).forEach(t=>sum+=Math.max(t-5,0));document.getElementById('result').innerHTML='<b>Lämpösumma:</b> '+sum.toFixed(1)+' astepäivää';document.getElementById('status').innerText='';}catch(err){document.getElementById('status').innerText='Virhe haettaessa dataa';}}
+function openHelp(){helpModal.style.display='block';document.body.style.overflow='hidden';}
+function closeHelp(){helpModal.style.display='none';document.body.style.overflow='auto';}
+window.onclick=(e)=>{if(e.target===helpModal)closeHelp();};
+setDefaultDate();
+</script>
+</body></html>
