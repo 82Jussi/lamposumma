@@ -4,8 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Lämpösummalaskuri</title>
-  <link rel="icon" href="icon.png">
-  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Lämpösumma">
   <meta name="theme-color" content="#2e7d32">
@@ -20,6 +22,8 @@
     #stats.loading{color:#555}
     canvas{max-height:650px}
     label{font-weight:600}
+    footer{margin-top:16px;padding-top:8px;border-top:1px solid #ddd;font-size:11px;color:#777;text-align:center}
+    footer a{color:#777}
   </style>
 </head>
 <body>
@@ -31,6 +35,10 @@
   <div id="map"></div>
   <div id="stats" class="loading" role="status" aria-live="polite">Ladataan tietoja...</div>
   <canvas id="chart"></canvas>
+  <footer>
+    Säädata: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0) ·
+    Kartta: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-tekijät
+  </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
