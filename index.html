@@ -77,10 +77,10 @@
       return result;
     }
     const SERIES_STYLE=[
-      {color:'#2e7d32',width:3,dash:[]},      // kuluva vuosi
-      {color:'#2e7d32',width:3,dash:[8,5]},   // ennuste (sama väri kuin kuluva vuosi)
-      {color:'#1565c0',width:2,dash:[]},      // edellinen vuosi
-      {color:'#8e24aa',width:2,dash:[2,3]}    // 2 vuotta sitten
+      {color:'#2e7d32',width:3,dash:[],cap:'round'},          // kuluva vuosi
+      {color:'#2e7d32',width:4,dash:[0.1,8],cap:'round'},     // ennuste: pyöreät pisteet, sama väri kuin kuluva vuosi
+      {color:'#1565c0',width:3,dash:[],cap:'round'},          // edellinen vuosi
+      {color:'#8e24aa',width:3,dash:[],cap:'round'}           // 2 vuotta sitten
     ];
     function renderLegend(chart){
       const box=document.getElementById('legend');
@@ -92,7 +92,7 @@
         if(!visible)b.classList.add('off');
         b.setAttribute('aria-pressed',String(visible));
         const dash=(ds.borderDash||[]).join(' ');
-        b.innerHTML=`<svg width="40" height="12" aria-hidden="true"><line x1="2" y1="6" x2="38" y2="6" stroke="${ds.borderColor}" stroke-width="${ds.borderWidth}" stroke-dasharray="${dash}" stroke-linejoin="round"/></svg><span>${ds.label}</span>`;
+        b.innerHTML=`<svg width="40" height="12" aria-hidden="true"><line x1="4" y1="6" x2="38" y2="6" stroke="${ds.borderColor}" stroke-width="${ds.borderWidth}" stroke-dasharray="${dash}" stroke-linejoin="round" stroke-linecap="${ds.borderCapStyle}"/></svg><span>${ds.label}</span>`;
         b.addEventListener('click',()=>{
           chart.setDatasetVisibility(i,!chart.isDatasetVisible(i));
           chart.update();
@@ -212,7 +212,7 @@
             pointRadius:0,pointHoverRadius:3,
             cubicInterpolationMode:'monotone',
             borderJoinStyle:'round',
-            borderCapStyle:'round',
+            borderCapStyle:SERIES_STYLE[i].cap,
             spanGaps:false
           }))
           },options:{
