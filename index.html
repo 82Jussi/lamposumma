@@ -14,27 +14,41 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body{font-family:Arial,sans-serif;margin:10px;color:#202124}
-    .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-    #map{height:350px;border-radius:8px}
-    #stats{margin:10px 0;padding:10px;background:#f3f7f3;border-radius:8px;line-height:1.45}
-    #stats.error{background:#ffebee;color:#b71c1c}
+    body{margin:0;font-family:Arial,sans-serif;background:#f3f3f3;color:#202124}
+    html,body{overflow-x:hidden}
+    header{background:#2e7d32;color:#fff;padding:12px;display:flex;justify-content:space-between;font-size:22px;font-weight:bold}
+    .card{background:#fff;margin:10px;padding:10px;border-radius:10px;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+    .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    label{font-weight:600;font-size:14px}
+    /* 16px estää iPhonen automaattisen zoomauksen kenttää napautettaessa */
+    input{padding:6px;font-size:16px;box-sizing:border-box;border:1px solid #ccc;border-radius:6px}
+    #map{height:300px;border-radius:8px}
+    #stats{line-height:1.45}
+    #stats.error{background:#ffcaca;color:#b71c1c}
     #stats.loading{color:#555}
     canvas{max-height:650px}
-    label{font-weight:600}
-    footer{margin-top:16px;padding-top:8px;border-top:1px solid #ddd;font-size:11px;color:#777;text-align:center}
+    .legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-bottom:8px}
+    .legend button{display:flex;align-items:center;gap:6px;background:none;border:none;padding:4px 6px;border-radius:6px;font:inherit;font-size:14px;color:#202124;cursor:pointer}
+    .legend button:focus-visible{outline:2px solid #2e7d32}
+    .legend button.off{opacity:.4;text-decoration:line-through}
+    footer{margin:16px 10px 12px;padding-top:8px;border-top:1px solid #ddd;font-size:11px;color:#777;text-align:center}
     footer a{color:#777}
   </style>
 </head>
 <body>
-  <h2>Lämpösummalaskuri</h2>
-  <div class="controls">
+  <header>
+    <span>Lämpösumma</span>
+  </header>
+  <div class="card controls">
     <label for="startDate">Aloituspäivä</label>
     <input type="date" id="startDate">
   </div>
-  <div id="map"></div>
-  <div id="stats" class="loading" role="status" aria-live="polite">Ladataan tietoja...</div>
-  <canvas id="chart"></canvas>
+  <div class="card"><div id="map"></div></div>
+  <div class="card"><div id="stats" class="loading" role="status" aria-live="polite">Ladataan tietoja...</div></div>
+  <div class="card">
+    <div id="legend" class="legend"></div>
+    <canvas id="chart"></canvas>
+  </div>
   <footer>
     Säädata: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0) ·
     Kartta: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-tekijät
@@ -61,6 +75,31 @@
       const result=new Date(date);
       result.setDate(result.getDate()+days);
       return result;
+    }
+    const SERIES_STYLE=[
+      {color:'#2e7d32',width:3,dash:[]},      // kuluva vuosi
+      {color:'#f57c00',width:3,dash:[6,4]},   // ennuste
+      {color:'#1565c0',width:2,dash:[]},      // edellinen vuosi
+      {color:'#8e24aa',width:2,dash:[2,3]}    // 2 vuotta sitten
+    ];
+    function renderLegend(chart){
+      const box=document.getElementById('legend');
+      box.innerHTML='';
+      chart.data.datasets.forEach((ds,i)=>{
+        const b=document.createElement('button');
+        b.type='button';
+        const visible=chart.isDatasetVisible(i);
+        if(!visible)b.classList.add('off');
+        b.setAttribute('aria-pressed',String(visible));
+        const dash=(ds.borderDash||[]).join(' ');
+        b.innerHTML=`<svg width="40" height="12" aria-hidden="true"><line x1="2" y1="6" x2="38" y2="6" stroke="${ds.borderColor}" stroke-width="${ds.borderWidth}" stroke-dasharray="${dash}"/></svg><span>${ds.label}</span>`;
+        b.addEventListener('click',()=>{
+          chart.setDatasetVisibility(i,!chart.isDatasetVisible(i));
+          chart.update();
+          renderLegend(chart);
+        });
+        box.appendChild(b);
+      });
     }
     function setStatus(message,type='loading'){
       stats.className=type;
@@ -109,7 +148,7 @@
         if(p.x<area.left||p.x>area.right||p.y<area.top||p.y>area.bottom)return;
         const ctx=chart.ctx;
         ctx.save();
-        ctx.strokeStyle='rgba(50,50,50,.35)';
+        ctx.strokeStyle='rgba(50,50,50,.35)';ctx.lineWidth=1;ctx.setLineDash([]);
         ctx.beginPath();
         ctx.moveTo(p.x,area.top);ctx.lineTo(p.x,area.bottom);
         ctx.moveTo(area.left,p.y);ctx.lineTo(area.right,p.y);
@@ -161,16 +200,23 @@
         if(ch)ch.destroy();
         ch=new Chart(document.getElementById('chart'),{
           type:'line',plugins:[crosshair],data:{labels,datasets:[
-            {label:String(year),data:historyData,borderColor:'green',pointRadius:0,pointHoverRadius:3},
-            {label:'Ennuste',data:forecastData,borderColor:'green',borderDash:[6,4],pointRadius:0,pointHoverRadius:3},
-            {label:String(year-1),data:previous1,borderColor:'black',pointRadius:0,pointHoverRadius:3},
-            {label:String(year-2),data:previous2,borderColor:'gray',pointRadius:0,pointHoverRadius:3}
-          ]},options:{
+            {label:String(year),data:historyData},
+            {label:'Ennuste',data:forecastData},
+            {label:String(year-1),data:previous1},
+            {label:String(year-2),data:previous2}
+          ].map((ds,i)=>({...ds,
+            borderColor:SERIES_STYLE[i].color,
+            backgroundColor:SERIES_STYLE[i].color,
+            borderWidth:SERIES_STYLE[i].width,
+            borderDash:SERIES_STYLE[i].dash,
+            pointRadius:0,pointHoverRadius:3
+          }))
+          },options:{
             responsive:true,
             interaction:{mode:'index',intersect:false},
             plugins:{
-              legend:{display:true,position:'top',labels:{usePointStyle:true}},
-              tooltip:{displayColors:true,callbacks:{
+              legend:{display:false},
+              tooltip:{displayColors:true,filter:item=>item.parsed.y!=null,callbacks:{
                 title:items=>'Päivämäärä: '+items[0].label,
                 label:context=>context.parsed.y==null?'':`${context.dataset.label}: ${context.parsed.y.toFixed(1)} astepäivää`
               }}
@@ -178,6 +224,7 @@
             scales:{x:{ticks:{maxTicksLimit:12}},y:{beginAtZero:true,title:{display:true,text:'Astepäivää'}}}
           }
         });
+        renderLegend(ch);
         const forecastEnd=forecast.at(-1)||base;
         stats.className='';
         stats.innerHTML=`<strong>Sijainti:</strong> ${lat.toFixed(4)}, ${lon.toFixed(4)}<br><strong>Lämpösumma eiliseen:</strong> ${base.toFixed(1)} astepäivää<br><strong>Ennuste 14 päivän päähän:</strong> ${forecastEnd.toFixed(1)} astepäivää`;
